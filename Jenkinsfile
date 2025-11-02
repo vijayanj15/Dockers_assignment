@@ -17,19 +17,17 @@ pipeline {
         }
 
         stage('Build Docker Image') {
-            steps {
-                // We must 'cd' into the 'cicd_app' folder where the Dockerfile is
-                dir('cicd_app') {
-                    echo "Building %DOCKER_HUB_USERNAME%/%DOCKER_IMAGE_NAME%..."
-                    
-                    // Build the image and tag it (using 'bat' for Windows)
-                    bat "docker build -t %DOCKER_HUB_USERNAME%/%DOCKER_IMAGE_NAME%:%BUILD_NUMBER% ."
-                    
-                    // Also tag it as 'latest'
-                    bat "docker tag %DOCKER_HUB_USERNAME%/%DOCKER_IMAGE_NAME%:%BUILD_NUMBER% %DOCKER_HUB_USERNAME%/%DOCKER_IMAGE_NAME%:latest"
-                }
-            }
-        }
+    steps {
+        // The Dockerfile is in the root, so we run the build from here.
+        echo "Building %DOCKER_HUB_USERNAME%/%DOCKER_IMAGE_NAME%..."
+
+        // Build the image and tag it (using 'bat' for Windows)
+        bat "docker build -t %DOCKER_HUB_USERNAME%/%DOCKER_IMAGE_NAME%:%BUILD_NUMBER% ."
+
+        // Also tag it as 'latest'
+        bat "docker tag %DOCKER_HUB_USERNAME%/%DOCKER_IMAGE_NAME%:%BUILD_NUMBER% %DOCKER_HUB_USERNAME%/%DOCKER_IMAGE_NAME%:latest"
+    }
+}
 
         stage('Test Container') {
             steps {
