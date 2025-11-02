@@ -31,9 +31,13 @@ pipeline {
 
         stage('Test Container') {
             steps {
+                echo "--- Pre-emptive Cleanup ---"
+                // Try to stop/remove old container. The '|| exit 0' ignores errors if it doesn't exist.
+                bat "(docker stop cicd-test-container && docker rm cicd-test-container) || exit 0"
+
                 echo "Running container for a quick test..."
                 
-                // Run the container in detached mode (with the corrected variable)
+                // Run the container in detached mode
                 bat "docker run -d --name cicd-test-container %DOCKER_HUB_USERNAME%/%DOCKER_IMAGE_NAME%:%BUILD_NUMBER%"
                 
                 // Wait 5 seconds
