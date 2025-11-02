@@ -34,10 +34,10 @@ pipeline {
                 echo "Running container for a quick test..."
                 
                 // Run the container in detached mode
-                bat "docker run -d --name cicd-test-container %DOCKER_HUB_USERNAME%/%DOCKER_IMAGE_NAME%:%BUILD_NUMBER%"
+                bat "docker run -d --name cicd-test-container %DOCKA_HUB_USERNAME%/%DOCKER_IMAGE_NAME%:%BUILD_NUMBER%"
                 
-                // Wait 5 seconds (Windows 'timeout' command instead of 'sleep')
-                bat "timeout /t 5"
+                // Wait 5 seconds (using 'ping' trick instead of 'timeout')
+                bat "ping -n 6 127.0.0.1 > nul"
                 
                 // Check that it's running (Windows 'findstr' command instead of 'grep')
                 bat "docker ps -f name=cicd-test-container --format \"{{.Names}}\" | findstr \"cicd-test-container\""
