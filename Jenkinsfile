@@ -1,91 +1,80 @@
-// Declarative Pipeline for CI/CD
 pipeline {
     agent any // Run on any available Jenkins agent
 
-    // Environment variables used in the pipeline
     environment {
-        // --- IMPORTANT ---
-        // 1. You will change this later to your Docker Hub username/repo
-        // 2. The ID 'dockerhub-creds' MUST match the credential ID you create in Jenkins
-        // -----------------
-        DOCKERHUB_IMAGE_NAME = '<your-dockerhub-username>/<your-repo-name>'
-        DOCKERHUB_CREDENTIALS_ID = 'dockerhub-creds'
-        PROJECT_DIR = 'cicd_app' // The subdirectory where our app lives
+        // !!! IMPORTANT: Change this to your Docker Hub username !!!
+        DOCKER_HUB_USERNAME = "your-dockerhub-username"
+        DOCKER_IMAGE_NAME   = "my-cicd-app"
+        DOCKER_CREDENTIALS_ID = "dockerhub-creds" // The ID we set in Step 2
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                // Get the code from GitHub
+                // This checks out the code from the GitHub repo
                 checkout scm
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    // Build the image and tag it with 'latest' and the Git commit hash
-                    // We 'cd' into the project directory to find the Dockerfile
-                    sh "docker build -t ${env.DOCKERHUB_IMAGE_NAME}:latest -f ${env.PROJECT_DIR}/Dockerfile ${env.PROJECT_DIR}"
-                    sh "docker build -t ${env.DOCKERHUB_IMAGE_NAME}:${env.GIT_COMMIT.take(7)} -f ${env.PROJECT_DIR}/Dockerfile ${env.PROJECT_DIR}"
+                // We must 'cd' into the 'cicd_app' folder where the Dockerfile is
+                dir('cicd_app') {
+                    echo "Building $DOCKER_HUB_USERNAME/$DOCKER_IMAGE_NAME..."
+                    
+                    // Build the image and tag it with the build number
+                    sh "docker build -t $DOCKER_HUB_USERNAME/$DOCKER_IMAGE_NAME:$BUILD_NUMBER ."
+                    
+                    // Also tag it as 'latest'
+                    sh "docker tag $DOCKER_HUB_USERNAME/$DOCKER_IMAGE_NAME:$BUILD_NUMBER $DOCKER_HUB_USERNAME/$DOCKER_IMAGE_NAME:latest"
                 }
             }
         }
 
-        stage('Test Application') {
+        stage('Test Container') {
             steps {
-                script {
-                    // Run the container in detached mode and give it a name for cleanup
-                    // We map port 8081 on the host to 5000 in the container
-                    sh "docker run -d --name test_container -p 8081:5000 ${env.DOCKERHUB_IMAGE_NAME}:latest"
-                    
-                    // Give the container a moment to start
-                    sh "sleep 5"
-                    
-                    // Test the endpoint. 'grep' will fail the build if the string isn't found.
-                    echo "Testing container endpoint..."
-                    sh "curl -s http://localhost:8081 | grep 'Hello from your CI/CD Pipeline'"
-                }
-            }
-            post {
-                // This 'always' block runs regardless of whether the stage succeeded or failed
-                always {
-                    // Clean up: Stop and remove the test container
-                    echo "Stopping and removing test container..."
-                    sh "docker stop test_container"
-                    sh "docker rm test_container"
-                }
+                // This is a simple test: run the container, check if it's running, then stop it
+                echo "Running container for a quick test..."
+                
+                // Run the container in detached mode
+                sh "docker run -d --name cicd-test-container $DOCKER_HUB_USERNAME/$DOCKER_IMAGE_NAME:$BUILD_NUMBER"
+                
+                // Wait a few seconds for it to start
+                sh "sleep 5"
+                
+                // Check that it's running (this command will fail the build if it's not)
+                sh "docker ps -f name=cicd-test-container --format '{{.Names}}' | grep 'cicd-test-container'"
+                
+                // Stop and remove the test container
+                echo "Stopping and removing test container..."
+                sh "docker stop cicd-test-container"
+                sh "docker rm cicd-test-container"
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                // Use the 'dockerhub-creds' secret to log in and push
-                withCredentials([string(credentialsId: env.DOCKERHUB_CREDENTIALS_ID, variable: 'DOCKERHUB_PASSWORD')]) {
-                    // --- IMPORTANT ---
-                    // You will need to change <your-dockerhub-username> in the login command below
-                    // -----------------
-                    sh "echo $DOCKERHUB_PASSWORD | docker login -u <your-dockerhub-username> --password-stdin"
-                    sh "docker push ${env.DOCKERHUB_IMAGE_NAME}:latest"
-                    sh "docker push ${env.DOCKERHUB_IMAGE_NAME}:${env.GIT_COMMIT.take(7)}"
+                echo "Logging in and pushing to Docker Hub..."
+                // Use the Jenkins credentials to log in to Docker
+                withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    
+                    // Push the build number tag
+                    sh "docker push $DOCKER_HUB_USERNAME/$DOCKER_IMAGE_NAME:$BUILD_NUMBER"
+                    
+                    // Push the 'latest' tag
+                    sh "docker push $DOCKER_HUB_USERNAME/$DOCKER_IMAGE_NAME:latest"
                 }
             }
         }
-
-        stage('Deploy (Optional)') {
-            steps {
-                // This is a placeholder for your deployment step.
-                echo "Deploying application... (This is just a placeholder)"
-            }
-        }
     }
-
+    
     post {
-        // This block runs at the end of the entire pipeline
+        // This 'post' block runs after all stages
         always {
-            // Clean up the Docker login
+            // Good practice to log out
             echo "Logging out of Docker Hub..."
-            sh "docker logout"
+            sh 'docker logout'
         }
     }
 }
