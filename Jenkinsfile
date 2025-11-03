@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // !!! IMPORTANT: Change this to your Docker Hub username (e.g., "vijay") !!!
-        DOCKER_HUB_USERNAME = "vijayanj15"
+        DOCKER_HUB_USERNAME = "gardockps"
         DOCKER_IMAGE_NAME   = "my-cicd-app"
         DOCKER_CREDENTIALS_ID = "dockerhub-creds"
     }
