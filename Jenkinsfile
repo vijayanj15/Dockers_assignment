@@ -72,10 +72,8 @@ pipeline {
     }
     
     post {
-        always {
-            echo "Logging out of Docker Hub..."
-            // Use 'bat' for the logout command
-            bat "docker logout"
-        }
+    always {
+        echo "Build finished."
     }
+}
 }
