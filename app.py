@@ -6,7 +6,7 @@ app = Flask(__name__)
 def hello():
     """A simple 'Hello World' route for testing the CI/CD pipeline."""
     # This new message will show that our webhook worked
-    return "Hello, World! This is my FULLY AUTOMATIC CI/CD PIPELINE! V2.0"
+    return "Hello, World! This is my FULLY AUTOMATIC CI/CD PIPELINE! V3.0"
 
 if __name__ == "__main__":
     # Note: 0.0.0.0 makes it accessible from outside the container
